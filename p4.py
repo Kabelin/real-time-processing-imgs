@@ -2,6 +2,13 @@ import numpy as np
 import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
+import importlib
+if importlib.util.find_spec("PIL") is None:
+    # pip3 install Pillow
+    print("Pillow isn't installed")
+if importlib.util.find_spec("tkinter") is None:
+    # sudo apt-get install python3-tk
+    print("Tkinter isn't installed")
 
 #Set up GUI
 window = tk.Tk()
@@ -10,11 +17,58 @@ window.config(background="#EEE")
 
 #Graphics window
 imageFrame = tk.Frame(window, width=600, height=600)
-imageFrame.grid(row=0, column=0, padx=10, pady=10)
+imageFrame.grid(row=1, column=0, padx=10, pady=10)
+
+#Options frame
+optFrame = tk.Frame(window, width=600)
+optFrame.grid(row=0, column=0, padx=10, pady=10)
+
+#Vars
+var = tk.BooleanVar()
+option = tk.StringVar()
+option.set("identity")
+
+#Status bar for blur detection
+status = tk.Label(optFrame, text="Not blurred", padx=10)
+
+
+def show():
+    if(var.get() == True): 
+        status.config(text="Not blurred")
+        status.grid(row=0, column=2)
+    else: 
+        status.config(text="Blurred")
+        status.grid_remove()
+        
+
+#Blur detection
+checkBlur = tk.Checkbutton(optFrame, text="Blur detection", variable=var, padx=10, command=show)
+checkBlur.grid(row=0, column=1, padx=40)
+
+#Dropdown menu
+drop = tk.OptionMenu(optFrame, option, 
+    'identity',
+    'edge detection',
+    'laplacian',
+    'laplacian w/ diagonals',
+    'laplacian of gaussian',
+    'scharr',
+    'sobel edge horizontal',
+    'sobel edge vertical',
+    'line detection horizontal',
+    'line detection vertical',
+    'line detection 45°',
+    'line detection 135°',
+    'box blur',
+    'gaussian blur 3x3',
+    'gaussian blur 5x5',
+    'sharpen',
+    'unsharp masking')
+drop.grid(row=0, column=0)
 
 #Capture video frames
 lmain = tk.Label(imageFrame)
-lmain.grid(row=0, column=0)
+lmain.grid(row=1, column=0)
 
 cap = cv2.VideoCapture(0)
 def show_frame():
