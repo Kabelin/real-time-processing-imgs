@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 
 #Set up GUI
 window = tk.Tk()
-window.title("Digital Microscope")
+window.title("Testing processing")
 window.config(background="#EEE")
 
 #Graphics window
