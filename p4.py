@@ -26,7 +26,6 @@ optFrame.grid(row=0, column=0, padx=10, pady=10)
 #Vars
 var = tk.BooleanVar()
 option = tk.StringVar()
-option.set("identity")
 
 #Status bar for blur detection
 status = tk.Label(optFrame, text="Not blurred", padx=10)
@@ -45,25 +44,30 @@ def show():
 checkBlur = tk.Checkbutton(optFrame, text="Blur detection", variable=var, padx=10, command=show)
 checkBlur.grid(row=0, column=1, padx=40)
 
+kernel = {
+    'identity': np.array([[0,0,0],[0,1,0],[0,0,0]], dtype=float),
+    'edge detection': np.array([[1,0,-1],[0,0,0],[-1,0,1]], dtype=float),
+    'laplacian': np.array([[0,-1,0],[-1,4,-1],[0,-1,0]], dtype=float),
+    'laplacian w/ diagonals': np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]], dtype=float),
+    'laplacian of gaussian': np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]], dtype=float),
+    'scharr': np.array([[-3, 0, 3],[-10,0,10],[-3, 0, 3]], dtype=float),
+    'sobel edge horizontal': np.array([[-1,-2,-1],[0,0,0],[1,2,1]], dtype=float),
+    'sobel edge vertical': np.array([[-1,0,1],[-2,0,2],[-1,0,1]], dtype=float),
+    'line detection horizontal': np.array([[-1,-1,-1],[2,2,2],[-1,-1,-1]], dtype=float),
+    'line detection vertical': np.array([[-1,2,-1],[-1,2,-1],[-1,2,-1]], dtype=float),
+    'line detection 45°': np.array([[-1,-1,2],[-1,2,-1],[2,-1,-1]], dtype=float),
+    'line detection 135°': np.array([[2,-1,-1],[-1,2,-1],[-1,-1,2]], dtype=float),
+    'box blur': (1/9)*np.ones((3,3), dtype=float),
+    'gaussian blur 3x3': (1/16)*np.array([[1,2,1],[2,4,2],[1,2,1]], dtype=float),
+    'gaussian blur 5x5': (1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
+    'sharpen': np.array([[0,-1,0],[-1,5,-1],[0,-1,0]], dtype=float),
+    'unsharp masking': (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
+}
+
 #Dropdown menu
-drop = tk.OptionMenu(optFrame, option, 
-    'identity',
-    'edge detection',
-    'laplacian',
-    'laplacian w/ diagonals',
-    'laplacian of gaussian',
-    'scharr',
-    'sobel edge horizontal',
-    'sobel edge vertical',
-    'line detection horizontal',
-    'line detection vertical',
-    'line detection 45°',
-    'line detection 135°',
-    'box blur',
-    'gaussian blur 3x3',
-    'gaussian blur 5x5',
-    'sharpen',
-    'unsharp masking')
+kernelKeys = kernel.keys()
+option.set(list(kernelKeys)[0])
+drop = tk.OptionMenu(optFrame, option, *kernelKeys)
 drop.grid(row=0, column=0)
 
 #Capture video frames
@@ -107,26 +111,6 @@ def convolve(im, omega, fft=False):
         g = spi*spf
         f = np.fft.ifft2(g)
         return np.real(f)[1:,1:] # elimina as primeiras linha e coluna
-
-kernel = {
-    'identity': np.array([[0,0,0],[0,1,0],[0,0,0]], dtype=float),
-    'edge detection': np.array([[1,0,-1],[0,0,0],[-1,0,1]], dtype=float),
-    'laplacian': np.array([[0,-1,0],[-1,4,-1],[0,-1,0]], dtype=float),
-    'laplacian w/ diagonals': np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]], dtype=float),
-    'laplacian of gaussian': np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]], dtype=float),
-    'scharr': np.array([[-3, 0, 3],[-10,0,10],[-3, 0, 3]], dtype=float),
-    'sobel edge horizontal': np.array([[-1,-2,-1],[0,0,0],[1,2,1]], dtype=float),
-    'sobel edge vertical': np.array([[-1,0,1],[-2,0,2],[-1,0,1]], dtype=float),
-    'line detection horizontal': np.array([[-1,-1,-1],[2,2,2],[-1,-1,-1]], dtype=float),
-    'line detection vertical': np.array([[-1,2,-1],[-1,2,-1],[-1,2,-1]], dtype=float),
-    'line detection 45°': np.array([[-1,-1,2],[-1,2,-1],[2,-1,-1]], dtype=float),
-    'line detection 135°': np.array([[2,-1,-1],[-1,2,-1],[-1,-1,2]], dtype=float),
-    'box blur': (1/9)*np.ones((3,3), dtype=float),
-    'gaussian blur 3x3': (1/16)*np.array([[1,2,1],[2,4,2],[1,2,1]], dtype=float),
-    'gaussian blur 5x5': (1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
-    'sharpen': np.array([[0,-1,0],[-1,5,-1],[0,-1,0]], dtype=float),
-    'unsharp masking': (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
-}
 
 show_frame()  #Display
 window.mainloop()  #Starts GUI
