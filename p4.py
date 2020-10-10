@@ -50,24 +50,40 @@ def show(var = var):
 checkBlur = tk.Checkbutton(optFrame, text="Blur detection", variable=var, padx=10, command=show)
 checkBlur.grid(row=0, column=1, padx=40)
 
+#Initial value for Blur Treshold To decide when its blurred or not
+blurThresh = 9
+def increaseBlurTresh():
+    global blurThresh
+    blurThresh += 1
+def decreaseBlurTresh():
+    global blurThresh
+    blurThresh -= 1
+#Buttons To increase blurThresh Value
+ButtonFrames = tk.Frame(window, width=200)
+ButtonFrames.grid(row = 0, column = 3)
+ButtonPlus = tk.Button(ButtonFrames, text="+", command = increaseBlurTresh)
+ButtonPlus.grid(row = 0, column = 0)
+ButtonMinus = tk.Button(ButtonFrames, text="-", command = decreaseBlurTresh)
+ButtonMinus.grid(row = 1, column = 0)
+
 kernel = {
-    'identity': np.array([[0,0,0],[0,1,0],[0,0,0]], dtype=float),
-    'edge detection': np.array([[1,0,-1],[0,0,0],[-1,0,1]], dtype=float),
-    'laplacian': np.array([[0,-1,0],[-1,4,-1],[0,-1,0]], dtype=float),
-    'laplacian w/ diagonals': np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]], dtype=float),
-    'laplacian of gaussian': np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]], dtype=float),
-    'scharr': np.array([[-3, 0, 3],[-10,0,10],[-3, 0, 3]], dtype=float),
-    'sobel edge horizontal': np.array([[-1,-2,-1],[0,0,0],[1,2,1]], dtype=float),
-    'sobel edge vertical': np.array([[-1,0,1],[-2,0,2],[-1,0,1]], dtype=float),
-    'line detection horizontal': np.array([[-1,-1,-1],[2,2,2],[-1,-1,-1]], dtype=float),
-    'line detection vertical': np.array([[-1,2,-1],[-1,2,-1],[-1,2,-1]], dtype=float),
-    'line detection 45°': np.array([[-1,-1,2],[-1,2,-1],[2,-1,-1]], dtype=float),
-    'line detection 135°': np.array([[2,-1,-1],[-1,2,-1],[-1,-1,2]], dtype=float),
-    'box blur': (1/9)*np.ones((3,3), dtype=float),
-    'gaussian blur 3x3': (1/16)*np.array([[1,2,1],[2,4,2],[1,2,1]], dtype=float),
-    'gaussian blur 5x5': (1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
-    'sharpen': np.array([[0,-1,0],[-1,5,-1],[0,-1,0]], dtype=float),
-    'unsharp masking': (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
+    'identity':                 np.array([[0,0,0],[0,1,0],[0,0,0]],                                                         dtype=float),
+    'edge detection':           np.array([[1,0,-1],[0,0,0],[-1,0,1]],                                                       dtype=float),
+    'laplacian':                np.array([[0,-1,0],[-1,4,-1],[0,-1,0]],                                                     dtype=float),
+    'laplacian w/ diagonals':   np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]],                                                 dtype=float),
+    'laplacian of gaussian':    np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]],        dtype=float),
+    'scharr':                   np.array([[-3, 0, 3],[-10,0,10],[-3, 0, 3]],                                                dtype=float),
+    'sobel edge horizontal':    np.array([[-1,-2,-1],[0,0,0],[1,2,1]],                                                      dtype=float),
+    'sobel edge vertical':      np.array([[-1,0,1],[-2,0,2],[-1,0,1]],                                                      dtype=float),
+    'line detection horizontal':np.array([[-1,-1,-1],[2,2,2],[-1,-1,-1]],                                                   dtype=float),
+    'line detection vertical':  np.array([[-1,2,-1],[-1,2,-1],[-1,2,-1]],                                                   dtype=float),
+    'line detection 45°':       np.array([[-1,-1,2],[-1,2,-1],[2,-1,-1]],                                                   dtype=float),
+    'line detection 135°':      np.array([[2,-1,-1],[-1,2,-1],[-1,-1,2]],                                                   dtype=float),
+    'box blur':                 (1/9)*np.ones((3,3),                                                                        dtype=float),
+    'gaussian blur 3x3':        (1/16)*np.array([[1,2,1],[2,4,2],[1,2,1]],                                                  dtype=float),
+    'gaussian blur 5x5':        (1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]],    dtype=float),
+    'sharpen':                  np.array([[0,-1,0],[-1,5,-1],[0,-1,0]],                                                     dtype=float),
+    'unsharp masking':          (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
 }
 
 #Dropdown menu
@@ -86,6 +102,8 @@ def show_frame():
     if ret == True:
       # Converting in shades of gray
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+      # Detecting blur
+      setBlurred(detectBlur(gray))
       # Blurring the image
       conv = np.uint8(np.round(convolve(gray, kernel[option.get()], fft=True)))
       img = Image.fromarray(conv)
@@ -113,19 +131,20 @@ def convolve(im, omega, fft=False):
     else:
         im = np.pad(im, ((0,1), (0,1))) # zero pad últimas linha e coluna
         spi = np.fft.fft2(im)
-        setBlurred(detectBlur(spi))
         spf = np.fft.fft2(omega, s=im.shape)
         g = spi*spf
         f = np.fft.ifft2(g)
         return np.real(f)[1:,1:] # elimina as primeiras linha e coluna
 
-def detectBlur(fft,cutFreq=60,thresh=9):
+def detectBlur(im,cutFreq=60,thresh=None):
+    thresh = thresh or blurThresh
+    fft = np.fft.fft2(im)
     (h, w) = fft.shape
-    (cX, cY) = ( int(w/2.0),int(h/2.0) )
-    fftShifted = np.fft.fftshift(fft)
-    fftShifted[cY - cutFreq:cY + cutFreq, cX - cutFreq:cX + cutFreq] = 0
-    fftShifted = np.fft.ifftshift(fftShifted)
-    recon = np.fft.ifft2(fftShifted)
+    fft[0:cutFreq,0:cutFreq]     = 0
+    fft[h-cutFreq:h,0:cutFreq]   = 0
+    fft[0:cutFreq,w-cutFreq:w]   = 0 
+    fft[h-cutFreq:h,w-cutFreq:w] = 0
+    recon = np.fft.ifft2(fft)
     magnitude = 20 * np.log(np.abs(recon))
     mean = np.mean(magnitude)
     return (mean, thresh)
