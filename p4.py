@@ -77,7 +77,7 @@ def show_frame():
       # Converting in shades of gray
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
       # Blurring the image
-      conv = np.uint8(np.round(convolve(gray, kernel['laplacian of gaussian'], fft=True)))
+      conv = np.uint8(np.round(convolve(gray, kernel[option.get()], fft=True)))
       img = Image.fromarray(conv)
       imgtk = ImageTk.PhotoImage(image=img)
       lmain.imgtk = imgtk
