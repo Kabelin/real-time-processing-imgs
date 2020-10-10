@@ -12,7 +12,7 @@ if importlib.util.find_spec("tkinter") is None:
 
 #Set up GUI
 window = tk.Tk()
-window.title("Testing processing")
+window.title("Projeto Final: Convolução de kernels sobre a captura do webcam")
 window.config(background="#EEE")
 
 #Graphics window
@@ -30,13 +30,19 @@ option = tk.StringVar()
 #Status bar for blur detection
 status = tk.Label(optFrame, text="Not blurred", padx=10)
 
+def setBlurred(tuple): #(value, maxValue)
+    isBlurred = tuple[0] <= tuple[1]
+    value = '%.2f'%tuple[0]
+    maxValue = '%.2f'%tuple[1]
+    if(isBlurred):
+        status.config(text="Blurred, value = " + value + " of " + maxValue)
+    else:
+        status.config(text="Not blurred, value = " + value + " of " + maxValue)
 
-def show():
+def show(var = var):
     if(var.get() == True): 
-        status.config(text="Not blurred")
         status.grid(row=0, column=2)
     else: 
-        status.config(text="Blurred")
         status.grid_remove()
         
 
@@ -107,10 +113,22 @@ def convolve(im, omega, fft=False):
     else:
         im = np.pad(im, ((0,1), (0,1))) # zero pad últimas linha e coluna
         spi = np.fft.fft2(im)
+        setBlurred(detectBlur(spi))
         spf = np.fft.fft2(omega, s=im.shape)
         g = spi*spf
         f = np.fft.ifft2(g)
         return np.real(f)[1:,1:] # elimina as primeiras linha e coluna
+
+def detectBlur(fft,cutFreq=60,thresh=9):
+    (h, w) = fft.shape
+    (cX, cY) = ( int(w/2.0),int(h/2.0) )
+    fftShifted = np.fft.fftshift(fft)
+    fftShifted[cY - cutFreq:cY + cutFreq, cX - cutFreq:cX + cutFreq] = 0
+    fftShifted = np.fft.ifftshift(fftShifted)
+    recon = np.fft.ifft2(fftShifted)
+    magnitude = 20 * np.log(np.abs(recon))
+    mean = np.mean(magnitude)
+    return (mean, thresh)
 
 show_frame()  #Display
 window.mainloop()  #Starts GUI
