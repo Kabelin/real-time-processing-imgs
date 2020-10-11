@@ -13,12 +13,11 @@ if importlib.util.find_spec("tkinter") is None:
 #Set up GUI
 window = tk.Tk()
 window.title("Projeto Final: Convolução de kernels sobre a captura do webcam")
-window.config(background="#EEE")
 
 #Main frames
-frame1 = tk.Frame(window)
+frame1 = tk.Frame(window, background="#282a36")
 frame1.pack(fill="both", expand=True, side="top")
-frame2 = tk.Frame(frame1)
+frame2 = tk.Frame(frame1, background="#282a36")
 frame2.pack(fill="x", expand=True, side="left", anchor="n")
 
 #Vars
@@ -55,8 +54,20 @@ def showBlurOptions(var = var):
         lblThreshold.pack_forget()
 
 #Blur detection
-checkBlur = tk.Checkbutton(frame2, text="Blur detection", width=20, variable=var, pady=10, command=showBlurOptions)
-checkBlur.pack(side="top")
+checkBlur = tk.Checkbutton(
+                            frame2, 
+                            text="Blur detection", 
+                            width=20, variable=var, 
+                            pady=10, 
+                            command=showBlurOptions, 
+                            background="#282a36",
+                            highlightbackground="#00b9ff",
+                            activebackground="#44475a",
+                            activeforeground="#f8f8f2",
+                            foreground="#f8f8f2",
+                            selectcolor="#44475a"
+                          )
+checkBlur.pack(side="top", fill="x")
 
 #Initial value for Blur Treshold To decide when its blurred or not
 blurThresh = tk.DoubleVar()
@@ -109,7 +120,7 @@ def on_selection(event):
     option.set(listbox.get(listbox.curselection()))
 
 listbox = tk.Listbox(frame2)
-listbox.pack(side="bottom", pady=10)
+listbox.pack(side="bottom", pady=10, fill="x")
 
 for item in kernelKeys:
     listbox.insert("end", item)
@@ -117,7 +128,7 @@ for item in kernelKeys:
 listbox.bind('<<ListboxSelect>>', on_selection)
 
 #Capture video frames
-lmain = tk.Label(frame1)
+lmain = tk.Label(frame1, borderwidth=0)
 lmain.pack(side="right")
 
 cap = cv2.VideoCapture(0)
@@ -134,7 +145,7 @@ def show_frame():
       imgtk = ImageTk.PhotoImage(image=img)
       lmain.imgtk = imgtk
       lmain.configure(image=imgtk)
-      lmain.after(20, show_frame) 
+      lmain.after(10, show_frame) 
 
 def convolve(im, omega, fft=False):
     M, N = im.shape
