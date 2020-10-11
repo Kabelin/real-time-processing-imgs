@@ -15,56 +15,68 @@ window = tk.Tk()
 window.title("Projeto Final: Convolução de kernels sobre a captura do webcam")
 window.config(background="#EEE")
 
-#Graphics window
-imageFrame = tk.Frame(window, width=600, height=600)
-imageFrame.grid(row=1, column=0, padx=10, pady=10)
-
-#Options frame
-optFrame = tk.Frame(window, width=600)
-optFrame.grid(row=0, column=0, padx=10, pady=10)
+#Main frames
+frame1 = tk.Frame(window)
+frame1.pack(fill="both", expand=True, side="top")
+frame2 = tk.Frame(frame1)
+frame2.pack(fill="x", expand=True, side="left", anchor="n")
 
 #Vars
 var = tk.BooleanVar()
 option = tk.StringVar()
 
 #Status bar for blur detection
-status = tk.Label(optFrame, text="Not blurred", padx=10)
+status = tk.Label(frame2, text="Not blurred", pady=10)
+blurValue = tk.Label(frame2, text="")
+lblThreshold = tk.Label(frame2, text="Threshold adjust:")
 
 def setBlurred(tuple): #(value, maxValue)
+    print(tuple)
     isBlurred = tuple[0] <= tuple[1]
     value = '%.2f'%tuple[0]
     maxValue = '%.2f'%tuple[1]
     if(isBlurred):
-        status.config(text="Blurred, value = " + value + " of " + maxValue)
+        status.config(text="Blurred")
+        blurValue.config(text="Value: {} of {}".format(value, maxValue))
     else:
-        status.config(text="Not blurred, value = " + value + " of " + maxValue)
+        status.config(text="Not blurred")
+        blurValue.config(text="Value: {} of {}".format(value, maxValue))
 
-def show(var = var):
+def showBlurOptions(var = var):
     if(var.get() == True): 
-        status.grid(row=0, column=2)
+        status.pack(side="top")
+        blurValue.pack(side="top", pady=(0, 10))
+        lblThreshold.pack(side="top")
+        scale.pack(side="top", pady=(0, 10))
     else: 
-        status.grid_remove()
-        
+        status.pack_forget()
+        scale.pack_forget()
+        blurValue.pack_forget()
+        lblThreshold.pack_forget()
 
 #Blur detection
-checkBlur = tk.Checkbutton(optFrame, text="Blur detection", variable=var, padx=10, command=show)
-checkBlur.grid(row=0, column=1, padx=40)
+checkBlur = tk.Checkbutton(frame2, text="Blur detection", width=20, variable=var, pady=10, command=showBlurOptions)
+checkBlur.pack(side="top")
 
 #Initial value for Blur Treshold To decide when its blurred or not
-blurThresh = 9
-def increaseBlurTresh():
-    global blurThresh
-    blurThresh += 1
-def decreaseBlurTresh():
-    global blurThresh
-    blurThresh -= 1
-#Buttons To increase blurThresh Value
-ButtonFrames = tk.Frame(window, width=200)
-ButtonFrames.grid(row = 0, column = 3)
-ButtonPlus = tk.Button(ButtonFrames, text="+", command = increaseBlurTresh)
-ButtonPlus.grid(row = 0, column = 0)
-ButtonMinus = tk.Button(ButtonFrames, text="-", command = decreaseBlurTresh)
-ButtonMinus.grid(row = 1, column = 0)
+blurThresh = tk.DoubleVar()
+blurThresh.set(9)
+# def increaseBlurTresh():
+#     global blurThresh
+#     blurThresh += 1
+# def decreaseBlurTresh():
+#     global blurThresh
+#     blurThresh -= 1
+# #Buttons To increase blurThresh Value
+# ButtonFrames = tk.Frame(window, width=200)
+# ButtonFrames.grid(row = 0, column = 3)
+# ButtonPlus = tk.Button(ButtonFrames, text="+", command = increaseBlurTresh)
+# ButtonPlus.grid(row = 0, column = 0)
+# ButtonMinus = tk.Button(ButtonFrames, text="-", command = decreaseBlurTresh)
+# ButtonMinus.grid(row = 1, column = 0)
+
+scale = tk.Scale(frame2, variable=blurThresh, orient="horizontal")
+
 
 kernel = {
     'identity':                 np.array([[0,0,0],[0,1,0],[0,0,0]],                                                         dtype=float),
@@ -86,15 +98,27 @@ kernel = {
     'unsharp masking':          (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
 }
 
-#Dropdown menu
+#Getting kernel keys and setting first option
 kernelKeys = kernel.keys()
 option.set(list(kernelKeys)[0])
-drop = tk.OptionMenu(optFrame, option, *kernelKeys)
-drop.grid(row=0, column=0)
+
+#Listbox component
+def on_selection(event):
+    # print('(event) previous:\t{}'.format(event.widget.get('active')))
+    # print('(event) current:\t{}'.format(event.widget.get(event.widget.curselection())))
+    option.set(listbox.get(listbox.curselection()))
+
+listbox = tk.Listbox(frame2)
+listbox.pack(side="bottom", pady=10)
+
+for item in kernelKeys:
+    listbox.insert("end", item)
+
+listbox.bind('<<ListboxSelect>>', on_selection)
 
 #Capture video frames
-lmain = tk.Label(imageFrame)
-lmain.grid(row=1, column=0)
+lmain = tk.Label(frame1)
+lmain.pack(side="right")
 
 cap = cv2.VideoCapture(0)
 def show_frame():
@@ -103,7 +127,7 @@ def show_frame():
       # Converting in shades of gray
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
       # Detecting blur
-      setBlurred(detectBlur(gray))
+      if(var.get() == True): setBlurred(detectBlur(gray))
       # Blurring the image
       conv = np.uint8(np.round(convolve(gray, kernel[option.get()], fft=True)))
       img = Image.fromarray(conv)
@@ -137,7 +161,7 @@ def convolve(im, omega, fft=False):
         return np.real(f)[1:,1:] # elimina as primeiras linha e coluna
 
 def detectBlur(im,cutFreq=60,thresh=None):
-    thresh = thresh or blurThresh
+    thresh = thresh or blurThresh.get()
     fft = np.fft.fft2(im)
     (h, w) = fft.shape
     fft[0:cutFreq,0:cutFreq]     = 0
