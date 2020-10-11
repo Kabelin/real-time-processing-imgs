@@ -3,6 +3,11 @@ import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
 import importlib
+
+#Testing imports
+if importlib.util.find_spec("cv2") is None:
+    # !pip install opencv-python
+    print("opencv-python isn't installed")
 if importlib.util.find_spec("PIL") is None:
     # pip3 install Pillow
     print("Pillow isn't installed")
@@ -20,23 +25,30 @@ frame1.pack(fill="both", expand=True, side="top")
 frame2 = tk.Frame(frame1, background="#282a36")
 frame2.pack(fill="x", expand=True, side="left", anchor="n")
 
-#Vars
-var = tk.BooleanVar()
+#----------------Vars----------------#
+checked = tk.BooleanVar()
 option = tk.StringVar()
+blurThresh = tk.DoubleVar()
+blurThresh.set(9)
 
-#Status bar for blur detection
+#--------------Widgets--------------#
+#Status of blur detection
 status = tk.Label(
     frame2, 
     text="Not blurred",
     background="#282a36",
     foreground="#f8f8f2",
 )
+
+# Values of blur
 blurValue = tk.Label(
     frame2, 
     text="",
     background="#282a36",
     foreground="#f8f8f2",
 )
+
+# Threshold adjust label
 lblThreshold = tk.Label(
     frame2, 
     text="Threshold adjust:",    
@@ -44,19 +56,7 @@ lblThreshold = tk.Label(
     foreground="#f8f8f2",
 )
 
-def setBlurred(tuple): #(value, maxValue)
-    print(tuple)
-    isBlurred = tuple[0] <= tuple[1]
-    value = '%.2f'%tuple[0]
-    maxValue = '%.2f'%tuple[1]
-    if(isBlurred):
-        status.config(text="Blurred")
-        blurValue.config(text="Value: {} of {}".format(value, maxValue))
-    else:
-        status.config(text="Not blurred")
-        blurValue.config(text="Value: {} of {}".format(value, maxValue))
-
-def showBlurOptions(var = var):
+def showBlurOptions(var = checked):
     if(var.get() == True): 
         status.pack(side="top", pady=(5,0))
         blurValue.pack(side="top")
@@ -68,38 +68,24 @@ def showBlurOptions(var = var):
         blurValue.pack_forget()
         lblThreshold.pack_forget()
 
-#Blur detection
+#Chechbutton of blur detection
 checkBlur = tk.Checkbutton(
     frame2, 
     text="Blur detection", 
-    variable=var, 
+    variable=checked, 
     pady=10, 
     command=showBlurOptions, 
     background="#282a36",
     activebackground="#44475a",
     activeforeground="#f8f8f2",
+    highlightcolor="#f8f8f2",
+    borderwidth=1,
     foreground="#f8f8f2",
     selectcolor="#44475a"
 )
 checkBlur.pack(side="top", fill="x", padx=5)
 
-#Initial value for Blur Treshold To decide when its blurred or not
-blurThresh = tk.DoubleVar()
-blurThresh.set(9)
-# def increaseBlurTresh():
-#     global blurThresh
-#     blurThresh += 1
-# def decreaseBlurTresh():
-#     global blurThresh
-#     blurThresh -= 1
-# #Buttons To increase blurThresh Value
-# ButtonFrames = tk.Frame(window, width=200)
-# ButtonFrames.grid(row = 0, column = 3)
-# ButtonPlus = tk.Button(ButtonFrames, text="+", command = increaseBlurTresh)
-# ButtonPlus.grid(row = 0, column = 0)
-# ButtonMinus = tk.Button(ButtonFrames, text="-", command = decreaseBlurTresh)
-# ButtonMinus.grid(row = 1, column = 0)
-
+# Threshold scale
 scale = tk.Scale(
     frame2, 
     variable=blurThresh, 
@@ -107,39 +93,11 @@ scale = tk.Scale(
     background="#282a36",
     activebackground="#44475a",
     foreground="#f8f8f2",
+    borderwidth=1,
+    to=30
 )
 
-
-kernel = {
-    'identity':                 np.array([[0,0,0],[0,1,0],[0,0,0]],                                                         dtype=float),
-    'edge detection':           np.array([[1,0,-1],[0,0,0],[-1,0,1]],                                                       dtype=float),
-    'laplacian':                np.array([[0,-1,0],[-1,4,-1],[0,-1,0]],                                                     dtype=float),
-    'laplacian w/ diagonals':   np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]],                                                 dtype=float),
-    'laplacian of gaussian':    np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]],        dtype=float),
-    'scharr':                   np.array([[-3, 0, 3],[-10,0,10],[-3, 0, 3]],                                                dtype=float),
-    'sobel edge horizontal':    np.array([[-1,-2,-1],[0,0,0],[1,2,1]],                                                      dtype=float),
-    'sobel edge vertical':      np.array([[-1,0,1],[-2,0,2],[-1,0,1]],                                                      dtype=float),
-    'line detection horizontal':np.array([[-1,-1,-1],[2,2,2],[-1,-1,-1]],                                                   dtype=float),
-    'line detection vertical':  np.array([[-1,2,-1],[-1,2,-1],[-1,2,-1]],                                                   dtype=float),
-    'line detection 45°':       np.array([[-1,-1,2],[-1,2,-1],[2,-1,-1]],                                                   dtype=float),
-    'line detection 135°':      np.array([[2,-1,-1],[-1,2,-1],[-1,-1,2]],                                                   dtype=float),
-    'box blur':                 (1/9)*np.ones((3,3),                                                                        dtype=float),
-    'gaussian blur 3x3':        (1/16)*np.array([[1,2,1],[2,4,2],[1,2,1]],                                                  dtype=float),
-    'gaussian blur 5x5':        (1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]],    dtype=float),
-    'sharpen':                  np.array([[0,-1,0],[-1,5,-1],[0,-1,0]],                                                     dtype=float),
-    'unsharp masking':          (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
-}
-
-#Getting kernel keys and setting first option
-kernelKeys = kernel.keys()
-option.set(list(kernelKeys)[0])
-
-#Listbox component
-def on_selection(event):
-    # print('(event) previous:\t{}'.format(event.widget.get('active')))
-    # print('(event) current:\t{}'.format(event.widget.get(event.widget.curselection())))
-    option.set(listbox.get(listbox.curselection()))
-
+#Listbox of kernels
 listbox = tk.Listbox(
     frame2,
     background="#282a36",
@@ -150,26 +108,23 @@ listbox = tk.Listbox(
     highlightcolor="#f8f8f2",
     relief="solid",
     height=17
-    )
+)
 listbox.pack(side="bottom", pady=5, padx=5, fill="both", expand=True)
-
-for item in kernelKeys:
-    listbox.insert("end", item)
-
-listbox.bind('<<ListboxSelect>>', on_selection)
 
 #Capture video frames
 lmain = tk.Label(frame1, borderwidth=0)
 lmain.pack(side="right", anchor="n")
 
 cap = cv2.VideoCapture(0)
+
+#----------------Functions and kernels----------------#
 def show_frame():
     ret, frame = cap.read()
     if ret == True:
       # Converting in shades of gray
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
       # Detecting blur
-      if(var.get() == True): setBlurred(detectBlur(gray))
+      if(checked.get() == True): setBlurred(detectBlur(gray))
       # Blurring the image
       conv = np.uint8(np.round(convolve(gray, kernel[option.get()], fft=True)))
       img = Image.fromarray(conv)
@@ -214,6 +169,53 @@ def detectBlur(im,cutFreq=60,thresh=None):
     magnitude = 20 * np.log(np.abs(recon))
     mean = np.mean(magnitude)
     return (mean, thresh)
+
+def setBlurred(tuple): #(value, maxValue)
+    # print(tuple)
+    isBlurred = tuple[0] <= tuple[1]
+    value = '%.2f'%tuple[0]
+    maxValue = '%.2f'%tuple[1]
+    if(isBlurred):
+        status.config(text="Blurred")
+        blurValue.config(text="Value: {} of {}".format(value, maxValue))
+    else:
+        status.config(text="Not blurred")
+        blurValue.config(text="Value: {} of {}".format(value, maxValue))
+
+
+kernel = {
+    'identity':                 np.array([[0,0,0],[0,1,0],[0,0,0]],                                                         dtype=float),
+    'edge detection':           np.array([[1,0,-1],[0,0,0],[-1,0,1]],                                                       dtype=float),
+    'laplacian':                np.array([[0,-1,0],[-1,4,-1],[0,-1,0]],                                                     dtype=float),
+    'laplacian w/ diagonals':   np.array([[-1,-1,-1],[-1,8,-1],[-1,-1,-1]],                                                 dtype=float),
+    'laplacian of gaussian':    np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]],        dtype=float),
+    'scharr':                   np.array([[-3, 0, 3],[-10,0,10],[-3, 0, 3]],                                                dtype=float),
+    'sobel edge horizontal':    np.array([[-1,-2,-1],[0,0,0],[1,2,1]],                                                      dtype=float),
+    'sobel edge vertical':      np.array([[-1,0,1],[-2,0,2],[-1,0,1]],                                                      dtype=float),
+    'line detection horizontal':np.array([[-1,-1,-1],[2,2,2],[-1,-1,-1]],                                                   dtype=float),
+    'line detection vertical':  np.array([[-1,2,-1],[-1,2,-1],[-1,2,-1]],                                                   dtype=float),
+    'line detection 45°':       np.array([[-1,-1,2],[-1,2,-1],[2,-1,-1]],                                                   dtype=float),
+    'line detection 135°':      np.array([[2,-1,-1],[-1,2,-1],[-1,-1,2]],                                                   dtype=float),
+    'box blur':                 (1/9)*np.ones((3,3),                                                                        dtype=float),
+    'gaussian blur 3x3':        (1/16)*np.array([[1,2,1],[2,4,2],[1,2,1]],                                                  dtype=float),
+    'gaussian blur 5x5':        (1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]],    dtype=float),
+    'sharpen':                  np.array([[0,-1,0],[-1,5,-1],[0,-1,0]],                                                     dtype=float),
+    'unsharp masking':          (-1/256)*np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,-476,24,6],[4,16,24,16,4],[1,4,6,4,1]], dtype=float),
+}
+
+#Getting kernel keys and setting first option
+kernelKeys = kernel.keys()
+option.set(list(kernelKeys)[0])
+
+# Filling up the listbox
+for item in kernelKeys:
+    listbox.insert("end", item)
+
+# Binding selected kernel of listbox with option variable
+def on_selection(event):
+    option.set(listbox.get(listbox.curselection()))
+ 
+listbox.bind('<<ListboxSelect>>', on_selection)
 
 show_frame()  #Display
 window.mainloop()  #Starts GUI
