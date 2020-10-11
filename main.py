@@ -94,7 +94,8 @@ scale = tk.Scale(
     activebackground="#44475a",
     foreground="#f8f8f2",
     borderwidth=1,
-    to=30
+    from_=-5,
+    to=25
 )
 
 #Listbox of kernels
