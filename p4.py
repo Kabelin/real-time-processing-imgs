@@ -25,9 +25,24 @@ var = tk.BooleanVar()
 option = tk.StringVar()
 
 #Status bar for blur detection
-status = tk.Label(frame2, text="Not blurred", pady=10)
-blurValue = tk.Label(frame2, text="")
-lblThreshold = tk.Label(frame2, text="Threshold adjust:")
+status = tk.Label(
+    frame2, 
+    text="Not blurred",
+    background="#282a36",
+    foreground="#f8f8f2",
+)
+blurValue = tk.Label(
+    frame2, 
+    text="",
+    background="#282a36",
+    foreground="#f8f8f2",
+)
+lblThreshold = tk.Label(
+    frame2, 
+    text="Threshold adjust:",    
+    background="#282a36",
+    foreground="#f8f8f2",
+)
 
 def setBlurred(tuple): #(value, maxValue)
     print(tuple)
@@ -43,10 +58,10 @@ def setBlurred(tuple): #(value, maxValue)
 
 def showBlurOptions(var = var):
     if(var.get() == True): 
-        status.pack(side="top")
-        blurValue.pack(side="top", pady=(0, 10))
+        status.pack(side="top", pady=(5,0))
+        blurValue.pack(side="top")
         lblThreshold.pack(side="top")
-        scale.pack(side="top", pady=(0, 10))
+        scale.pack(side="top", pady=(0, 5), fill="x", padx=5)
     else: 
         status.pack_forget()
         scale.pack_forget()
@@ -55,19 +70,18 @@ def showBlurOptions(var = var):
 
 #Blur detection
 checkBlur = tk.Checkbutton(
-                            frame2, 
-                            text="Blur detection", 
-                            width=20, variable=var, 
-                            pady=10, 
-                            command=showBlurOptions, 
-                            background="#282a36",
-                            highlightbackground="#00b9ff",
-                            activebackground="#44475a",
-                            activeforeground="#f8f8f2",
-                            foreground="#f8f8f2",
-                            selectcolor="#44475a"
-                          )
-checkBlur.pack(side="top", fill="x")
+    frame2, 
+    text="Blur detection", 
+    variable=var, 
+    pady=10, 
+    command=showBlurOptions, 
+    background="#282a36",
+    activebackground="#44475a",
+    activeforeground="#f8f8f2",
+    foreground="#f8f8f2",
+    selectcolor="#44475a"
+)
+checkBlur.pack(side="top", fill="x", padx=5)
 
 #Initial value for Blur Treshold To decide when its blurred or not
 blurThresh = tk.DoubleVar()
@@ -86,7 +100,14 @@ blurThresh.set(9)
 # ButtonMinus = tk.Button(ButtonFrames, text="-", command = decreaseBlurTresh)
 # ButtonMinus.grid(row = 1, column = 0)
 
-scale = tk.Scale(frame2, variable=blurThresh, orient="horizontal")
+scale = tk.Scale(
+    frame2, 
+    variable=blurThresh, 
+    orient="horizontal",
+    background="#282a36",
+    activebackground="#44475a",
+    foreground="#f8f8f2",
+)
 
 
 kernel = {
@@ -119,8 +140,18 @@ def on_selection(event):
     # print('(event) current:\t{}'.format(event.widget.get(event.widget.curselection())))
     option.set(listbox.get(listbox.curselection()))
 
-listbox = tk.Listbox(frame2)
-listbox.pack(side="bottom", pady=10, fill="x")
+listbox = tk.Listbox(
+    frame2,
+    background="#282a36",
+    foreground="#f8f8f2",
+    selectforeground="#f8f8f2",
+    selectbackground="#44475a",
+    borderwidth=1,
+    highlightcolor="#f8f8f2",
+    relief="solid",
+    height=17
+    )
+listbox.pack(side="bottom", pady=5, padx=5, fill="both", expand=True)
 
 for item in kernelKeys:
     listbox.insert("end", item)
@@ -129,7 +160,7 @@ listbox.bind('<<ListboxSelect>>', on_selection)
 
 #Capture video frames
 lmain = tk.Label(frame1, borderwidth=0)
-lmain.pack(side="right")
+lmain.pack(side="right", anchor="n")
 
 cap = cv2.VideoCapture(0)
 def show_frame():
