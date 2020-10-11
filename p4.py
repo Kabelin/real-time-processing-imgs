@@ -45,7 +45,6 @@ lblThreshold = tk.Label(
 )
 
 def setBlurred(tuple): #(value, maxValue)
-    print(tuple)
     isBlurred = tuple[0] <= tuple[1]
     value = '%.2f'%tuple[0]
     maxValue = '%.2f'%tuple[1]
@@ -107,6 +106,8 @@ scale = tk.Scale(
     background="#282a36",
     activebackground="#44475a",
     foreground="#f8f8f2",
+    from_=-5,
+    to = 25
 )
 
 
