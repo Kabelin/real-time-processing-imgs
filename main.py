@@ -1,6 +1,9 @@
+import time
+import random
 import numpy as np
 import cv2
 import tkinter as tk
+from scipy import signal, ndimage
 from PIL import Image, ImageTk
 import importlib
 
@@ -112,51 +115,56 @@ listbox = tk.Listbox(
 )
 listbox.pack(side="bottom", pady=5, padx=5, fill="both", expand=True)
 
+#Button for convolution Testing
+test_convolution_vars = None
+def testLatestConvolution():
+    print("Testing convolutions with the last image")
+    global test_convolution_vars
+    gray, omega = test_convolution_vars
+    testConvolutions(getConvolutions(), gray, omega, 1)
+
+testConvolutionButton = tk.Button(
+    frame2,
+    text= "Test Convolution Algoritms FrameTime in Console",
+    command = testLatestConvolution
+)
+testConvolutionButton.pack(side="bottom")
+
 #Capture video frames
 lmain = tk.Label(frame1, borderwidth=0)
 lmain.pack(side="right", anchor="n")
 
 cap = cv2.VideoCapture(0)
 
+frametime = time.time()
 #----------------Functions and kernels----------------#
 def show_frame():
+    global frametime, test_convolution_vars
     ret, frame = cap.read()
     if ret == True:
       # Converting in shades of gray
       gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
       # Detecting blur
       if(checked.get() == True): setBlurred(detectBlur(gray))
+      #Setting Test Convolutions tuple and getting kernel
+      omega = kernel[option.get()]
+      test_convolution_vars = (gray,omega)
       # Blurring the image
-      conv = np.uint8(np.round(convolve(gray, kernel[option.get()], fft=True)))
+      conv = convolve(gray, omega, 3)
+
+      print("Frametime: {}".format(time.time() - frametime))
+      frametime = time.time()
+
       img = Image.fromarray(conv)
-      imgtk = ImageTk.PhotoImage(image=img)
+      imgtk = ImageTk.PhotoImage(image=img) 
       lmain.imgtk = imgtk
+
+      timeStart = time.time()
       lmain.configure(image=imgtk)
+      print("Frametime tk config: {}".format(time.time() - timeStart))
+
       lmain.after(10, show_frame) 
 
-def convolve(im, omega, fft=False):
-    M, N = im.shape
-    A, B = omega.shape
-    a, b = A//2, B//2 # núcleo com dimensões ímpares
-    if not fft:
-        f = np.array(im, dtype=float)
-        g = np.zeros_like(f, dtype=float)
-        for x in range(M):
-            for y in range(N):
-                aux = 0.0
-                for dx in range(-a, a+1):
-                    for dy in range(-b, b+1):
-                        if 0 <= x+dx < M and 0 <= y+dy < N: # ou você pode usar "zero pad" na imagem
-                            aux += omega[a-dx, b-dy]*f[x+dx, y+dy]
-                g[x, y] = aux
-        return g
-    else:
-        im = np.pad(im, ((0,1), (0,1))) # zero pad últimas linha e coluna
-        spi = np.fft.fft2(im)
-        spf = np.fft.fft2(omega, s=im.shape)
-        g = spi*spf
-        f = np.fft.ifft2(g)
-        return np.real(f)[1:,1:] # elimina as primeiras linha e coluna
 
 def detectBlur(im,cutFreq=60,thresh=None):
     thresh = thresh or blurThresh.get()
@@ -217,6 +225,81 @@ def on_selection(event):
     option.set(listbox.get(listbox.curselection()))
  
 listbox.bind('<<ListboxSelect>>', on_selection)
+
+#Área de Convoluções e Testes
+
+#Convoluções distintas para teste
+def convolve(im, omega, index):
+    
+    defaultIndex = 1
+    convolutions = getConvolutions()
+    index = index or defaultIndex
+    if(index > len(convolutions)-1):
+        print("Convolução com o index {} não encontrado, carregando default".format(index))
+        index = defaultIndex
+    result = convolutions[index](im,omega)
+    
+    return result
+
+def testConvolutions(convolutions, im, omega, inverseChance=1):  #1 of inverseChance of executing the test
+    if(random.randint(1,inverseChance) == 1):
+        for i,convolution in enumerate(convolutions):
+            timeStart = time.time()
+            c = convolution(im,omega)
+            timeEnd = time.time()
+            print("Tempo de execução da convolução {}: {}".format(i, timeEnd - timeStart))
+            print(c)
+
+
+#Implementações das convoluções
+def convolve_fft(im,omega):
+    im = np.pad(im, ((0,1), (0,1))) # zero pad últimas linha e coluna
+    spi = np.fft.fft2(im)
+    spf = np.fft.fft2(omega, s=im.shape)
+    g = spi*spf
+    f = np.fft.ifft2(g)
+    return np.real(f)[1:,1:] # elimina as primeiras linha e coluna
+
+def convolve_pure(im,omega):
+    M, N = im.shape
+    A, B = omega.shape
+    a, b = A//2, B//2 # núcleo com dimensões ímpares
+    f = np.array(im, dtype=float)
+    g = np.zeros_like(f, dtype=float)
+    for x in range(M):
+        for y in range(N):
+            aux = 0.0
+            for dx in range(-a, a+1):
+                for dy in range(-b, b+1):
+                    if 0 <= x+dx < M and 0 <= y+dy < N: # ou você pode usar "zero pad" na imagem
+                        aux += omega[a-dx, b-dy]*f[x+dx, y+dy]
+            g[x, y] = aux
+    return g
+
+def convolve_scipy(im, omega):
+    return signal.convolve(im, omega, mode = 'full')
+
+def convolve_scipy_fft(im, omega):
+    return signal.fftconvolve(im, omega, mode = 'full')
+
+def convolve_scipy_2d(im, omega):
+    return signal.convolve2d(im, omega)
+
+def convolve_uint_scipy(im, omega):
+    return ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0)
+    
+
+#Armazenamento das convoluções em um array
+def getConvolutions():
+    convolutions = [
+        convolve_pure,
+        convolve_fft,
+        convolve_scipy,
+        convolve_scipy_fft,
+        convolve_scipy_2d,
+        convolve_uint_scipy
+    ]
+    return convolutions
 
 show_frame()  #Display
 window.mainloop()  #Starts GUI
