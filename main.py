@@ -3,6 +3,7 @@ import random
 import numpy as np
 import cv2
 import tkinter as tk
+import tkinter.font as tkFont
 from scipy import signal, ndimage
 from PIL import Image, ImageTk
 import importlib
@@ -21,6 +22,13 @@ if importlib.util.find_spec("tkinter") is None:
 #Set up GUI
 window = tk.Tk()
 window.title("Projeto Final: Convolução de kernels sobre a captura do webcam")
+
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+# print(screen_height, screen_width)
+fontSize = 14 if screen_width <= 1366 else 16
+default_font = tkFont.nametofont("TkDefaultFont")
+default_font.configure(size=fontSize)
 
 #Main frames
 frame1 = tk.Frame(window, background="#282a36")
@@ -156,6 +164,7 @@ def show_frame():
       frametime = time.time()
 
       img = Image.fromarray(conv)
+      img = imgSizeAdjust(img)
       imgtk = ImageTk.PhotoImage(image=img) 
       lmain.imgtk = imgtk
 
@@ -220,11 +229,20 @@ option.set(list(kernelKeys)[0])
 for item in kernelKeys:
     listbox.insert("end", item)
 
+listbox.select_set(0)
+
 # Binding selected kernel of listbox with option variable
 def on_selection(event):
     option.set(listbox.get(listbox.curselection()))
  
 listbox.bind('<<ListboxSelect>>', on_selection)
+
+# Image resize for bigger resolutions
+def imgSizeAdjust(img):
+    param = 1.3 if screen_width <= 1366 else 1.6
+    imgWidth = int(round(img.width * param))
+    imgHeight = int(round(img.height * param))
+    return img.resize((imgWidth, imgHeight), Image.ANTIALIAS)
 
 #Área de Convoluções e Testes
 
