@@ -5,6 +5,7 @@ import cv2
 import tkinter as tk
 import tkinter.font as tkFont
 from scipy import signal, ndimage
+import timeit
 from PIL import Image, ImageTk
 import importlib
 
@@ -144,10 +145,13 @@ lmain.pack(side="right", anchor="n")
 
 cap = cv2.VideoCapture(0)
 
-frametime = time.time()
+frametimeLast = time.time()
+frametimeSum_tk = 0
+nFrame = 0
 #----------------Functions and kernels----------------#
 def show_frame():
-    global frametime, test_convolution_vars
+    global frametimeLast, frametimeSum_tk, test_convolution_vars, nFrame
+    meanSize = 100
     ret, frame = cap.read()
     if ret == True:
       # Converting in shades of gray
@@ -158,20 +162,27 @@ def show_frame():
       omega = kernel[option.get()]
       test_convolution_vars = (gray,omega)
       # Blurring the image
-      conv = convolve(gray, omega, 3)
+      conv = convolve(gray, omega, 5)
 
-      print("Frametime: {}".format(time.time() - frametime))
-      frametime = time.time()
+      if(nFrame % meanSize == 0):
+          newTime = time.time()
+          print("Frametime: {time:.3f}ms".format(time = 1000*(newTime - frametimeLast)/meanSize))
+          frametimeLast = newTime
+     
+      timeStart = time.time()
 
       img = Image.fromarray(conv)
       img = imgSizeAdjust(img)
       imgtk = ImageTk.PhotoImage(image=img) 
       lmain.imgtk = imgtk
-
-      timeStart = time.time()
       lmain.configure(image=imgtk)
-      print("Frametime tk config: {}".format(time.time() - timeStart))
+      frametimeSum_tk += time.time() - timeStart
 
+      if(nFrame % meanSize == 0):
+          print("Frametime tk config: {time:.3f}ms".format(time = 1000 * frametimeSum_tk/meanSize))
+          frametimeSum_tk = 0
+
+      nFrame += 1
       lmain.after(10, show_frame) 
 
 
@@ -262,11 +273,13 @@ def convolve(im, omega, index):
 def testConvolutions(convolutions, im, omega, inverseChance=1):  #1 of inverseChance of executing the test
     if(random.randint(1,inverseChance) == 1):
         for i,convolution in enumerate(convolutions):
-            timeStart = time.time()
-            c = convolution(im,omega)
-            timeEnd = time.time()
-            print("Tempo de execução da convolução {}: {}".format(i, timeEnd - timeStart))
-            print(c)
+            #timeStart = time.time()
+            #c = convolution(im,omega)
+            #timeEnd = time.time()
+            numberOfExecutions = 100
+            duration = timeit.timeit(lambda: convolution(im,omega), number=numberOfExecutions)
+            print("Tempo de execução da convolução {index}: {duration:.3f}ms".format(index = i ,duration = duration*1000/numberOfExecutions))
+            #print(c)
 
 
 #Implementações das convoluções
@@ -304,18 +317,32 @@ def convolve_scipy_2d(im, omega):
     return signal.convolve2d(im, omega)
 
 def convolve_uint_scipy(im, omega):
-    return ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0)
+    conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int16)
+    np.clip(conv,0,255,out=conv)
+    return np.uint8(conv)
+
+def convolve_uint_scipy_view16(im, omega):    #Fastest convolution yet
+    conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int16)
+    np.clip(conv,0,255,out=conv)
+    return conv.view('uint8')[:,::2]
+
+def convolve_uint_scipy_view32(im, omega):
+    conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int32)
+    np.clip(conv,0,255,out=conv)
+    return conv.view('uint8')[:,::4]
     
 
 #Armazenamento das convoluções em um array
 def getConvolutions():
     convolutions = [
-        convolve_pure,
+        #convolve_pure,
         convolve_fft,
         convolve_scipy,
         convolve_scipy_fft,
         convolve_scipy_2d,
-        convolve_uint_scipy
+        convolve_uint_scipy,
+        convolve_uint_scipy_view16,
+        convolve_uint_scipy_view32
     ]
     return convolutions
 
