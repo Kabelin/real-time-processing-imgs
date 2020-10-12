@@ -36,6 +36,8 @@ frame1 = tk.Frame(window, background="#282a36")
 frame1.pack(fill="both", expand=True, side="top")
 frame2 = tk.Frame(frame1, background="#282a36")
 frame2.pack(fill="x", expand=True, side="left", anchor="n")
+frame3 = tk.Frame(frame2, background="#282a36")
+frame3.pack(fill="x", expand=True, side="top", anchor="n", padx=5)
 
 #----------------Vars----------------#
 checked = tk.BooleanVar()
@@ -82,20 +84,23 @@ def showBlurOptions(var = checked):
 
 #Chechbutton of blur detection
 checkBlur = tk.Checkbutton(
-    frame2, 
+    frame3, 
     text="Blur detection", 
     variable=checked, 
-    pady=10, 
+    pady=10,
+    padx=5,
     command=showBlurOptions, 
     background="#282a36",
     activebackground="#44475a",
     activeforeground="#f8f8f2",
     highlightcolor="#f8f8f2",
     borderwidth=1,
+    highlightthickness=1,
+    relief="solid",
     foreground="#f8f8f2",
     selectcolor="#44475a"
 )
-checkBlur.pack(side="top", fill="x", padx=5)
+checkBlur.pack(side="left")
 
 # Threshold scale
 scale = tk.Scale(
@@ -133,11 +138,19 @@ def testLatestConvolution():
     testConvolutions(getConvolutions(), gray, omega, 1)
 
 testConvolutionButton = tk.Button(
-    frame2,
-    text= "Test Convolution Algoritms FrameTime in Console",
+    frame3,
+    text= "Test convolutions",
+    background="#282a36",
+    foreground="#f8f8f2",
+    activebackground="#44475a",
+    activeforeground="#f8f8f2",
+    borderwidth=1,
+    pady=9,
+    highlightcolor="#f8f8f2",
+    relief="solid",
     command = testLatestConvolution
 )
-testConvolutionButton.pack(side="bottom")
+testConvolutionButton.pack(side="right", padx=(5,0))
 
 #Capture video frames
 lmain = tk.Label(frame1, borderwidth=0)
@@ -171,9 +184,8 @@ def show_frame():
      
       timeStart = time.time()
 
-      img = Image.fromarray(conv)
-      img = imgSizeAdjust(img)
-      imgtk = ImageTk.PhotoImage(image=img) 
+      img = Image.fromarray(conv)      
+      imgtk = ImageTk.PhotoImage(image=imgSizeAdjust(img)) 
       lmain.imgtk = imgtk
       lmain.configure(image=imgtk)
       frametimeSum_tk += time.time() - timeStart
@@ -251,9 +263,7 @@ listbox.bind('<<ListboxSelect>>', on_selection)
 # Image resize for bigger resolutions
 def imgSizeAdjust(img):
     param = 1.3 if screen_width <= 1366 else 1.6
-    imgWidth = int(round(img.width * param))
-    imgHeight = int(round(img.height * param))
-    return img.resize((imgWidth, imgHeight), Image.ANTIALIAS)
+    return img.resize((int(img.width * param), int(img.height * param)))
 
 #Área de Convoluções e Testes
 
