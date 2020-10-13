@@ -1,3 +1,12 @@
+#Sinais e Multimídia - Projeto Final
+#Aplicativo de Processamento de Imagens utilizando convoluções de kernels sobre imagens do webcam com detecção de blur
+
+#Integrantes do grupo - Matrículas
+
+#Vinícius Pereira Duarte - 11721ECP003
+#Vitor Rabelo Cruvinel - 11721ECP004
+#Renato Junio Martins - 11721ECP003
+
 import time
 import random
 import numpy as np
@@ -238,6 +247,151 @@ class MyApp:
         self.label_frame = tk.Label(self.frame4, borderwidth=0, background="#282a36")
         self.label_frame.pack()
 
+    def onSelection(self, event):
+        self.option.set(self.listbox.get(self.listbox.curselection()))
+
+    # Dynamic Image resizing
+    def imgSizeAdjust(self, img):
+        stable_width = self.frame1.winfo_width() - self.frame2.winfo_width()
+        ratio = stable_width/img.width
+        stable_height = int(ratio*img.height)
+        if (stable_width > 1):
+            return img.resize((stable_width, stable_height), Image.NEAREST)
+        else:
+            return img.resize((img.width, img.height), Image.NEAREST)
+
+    def showBlurOptions(self):
+        if(self.checked.get() == True):
+            self.status.pack(side="top", pady=(5,0))
+            self.blur_value.pack(side="top")
+            self.label_threshold.pack(side="top")
+            self.scale.pack(side="top", pady=(0, 5), fill="x", padx=5)
+        else:
+            self.status.pack_forget()
+            self.scale.pack_forget()
+            self.blur_value.pack_forget()
+            self.label_threshold.pack_forget()
+
+    def detectBlur(self, im, cut_freq=60, thresh=None):
+        thresh = thresh or self.blur_thresh.get()
+        fft = np.fft.fft2(im)
+        (h, w) = fft.shape
+        fft[0:cut_freq,0:cut_freq]     = 0
+        fft[h-cut_freq:h,0:cut_freq]   = 0
+        fft[0:cut_freq,w-cut_freq:w]   = 0
+        fft[h-cut_freq:h,w-cut_freq:w] = 0
+        recon = np.fft.ifft2(fft)
+        magnitude = 20 * np.log(np.abs(recon))
+        mean = np.mean(magnitude)
+        return (mean, thresh)
+
+    def detectBlur_convolve(self, im):
+        thresh = self.blur_thresh.get()
+        mean = self.convolve(im, self.kernel['laplacian'], 5).var()/10 - 10
+        return (mean, thresh)
+
+    def setBlurred(self, tuple): #(value, maxValue)
+        is_blurred = tuple[0] <= tuple[1]
+        value = '%.2f'%tuple[0]
+        max_value = '%.2f'%tuple[1]
+        if(is_blurred):
+            self.status.config(text="Blurred")
+            self.blur_value.config(text="Value: {} of {}".format(value, max_value))
+        else:
+            self.status.config(text="Not blurred")
+            self.blur_value.config(text="Value: {} of {}".format(value, max_value))
+
+    # Array of convolutions implemented
+    def getConvolutions(self):
+        convolutions = [
+            #convolve_pure,
+            self.convolve_fft,
+            self.convolve_scipy,
+            self.convolve_scipy_fft,
+            self.convolve_scipy_2d,
+            self.convolve_uint_scipy,
+            self.convolve_uint_scipy_view16,
+            self.convolve_uint_scipy_view32
+        ]
+        return convolutions
+
+    # The convolve method uses the fastest convolution implemented
+    def convolve(self, im, omega, index):
+        default_index = 1
+        convolutions = self.getConvolutions()
+        index = index or default_index
+        if(index > len(convolutions)-1):
+            print("Convolução com o index {} não encontrado, carregando default".format(index))
+            index = default_index
+        result = convolutions[index](im,omega)
+        return result
+
+    def testLatestConvolution(self):
+        print("Testing convolutions with the last image")
+        gray, omega = self.test_convolution
+        self.testConvolutions(self.getConvolutions(), gray, omega, 1)
+
+    # The testConvolutions calculates the time used for each convolution method
+    def testConvolutions(self, convolutions, im, omega, inverse_chance=1):  #1 of inverse_chance of executing the test
+        if(random.randint(1,inverse_chance) == 1):
+            for i,convolution in enumerate(convolutions):
+                number_of_executions = 100
+                duration = timeit.timeit(lambda: convolution(im,omega), number=number_of_executions)
+                print("Tempo de execução da convolução {index}: {duration:.3f}ms".format(index = i ,duration = duration*1000/number_of_executions))
+
+    # Convolutions implementations
+
+    def convolve_pure(self, im, omega):
+        M, N = im.shape
+        A, B = omega.shape
+        a, b = A//2, B//2 # kernel with odd dimensions
+        f = np.array(im, dtype=float)
+        g = np.zeros_like(f, dtype=float)
+        for x in range(M):
+            for y in range(N):
+                aux = 0.0
+                for dx in range(-a, a+1):
+                    for dy in range(-b, b+1):
+                        # or you could use "zero pad" on image
+                        if 0 <= x+dx < M and 0 <= y+dy < N:
+                            aux += omega[a-dx, b-dy]*f[x+dx, y+dy]
+                g[x, y] = aux
+        return g
+
+    def convolve_fft(self, im, omega):
+        im = np.pad(im, ((0,1), (0,1))) # zero pad in the last row and column
+        spi = np.fft.fft2(im)
+        spf = np.fft.fft2(omega, s=im.shape)
+        g = spi*spf
+        f = np.fft.ifft2(g)
+        return np.real(f)[1:,1:] # erase the last row and column
+
+    def convolve_scipy(self, im, omega):
+        return signal.convolve(im, omega, mode = 'full')
+
+    def convolve_scipy_fft(self, im, omega):
+        return signal.fftconvolve(im, omega, mode = 'full')
+
+    def convolve_scipy_2d(self, im, omega):
+        return signal.convolve2d(im, omega)
+
+    def convolve_uint_scipy(self, im, omega):
+        conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int16)
+        np.clip(conv,0,255,out=conv)
+        return np.uint8(conv)
+
+    #Fastest convolution found for this application, Select this for testing ###############################
+    def convolve_uint_scipy_view16(self, im, omega):    
+        conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int16)
+        np.clip(conv,0,255,out=conv)
+        return conv.view('uint8')[:,::2]
+    ########################################################################################################
+
+    def convolve_uint_scipy_view32(self, im, omega):
+        conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int32)
+        np.clip(conv,0,255,out=conv)
+        return conv.view('uint8')[:,::4]
+    
     def showFrame(self):
         ret, frame = self.cap.read()
         if ret == True:
@@ -247,7 +401,6 @@ class MyApp:
             time_start = time.time()
             if(self.checked.get() == True): self.setBlurred(self.detectBlur(gray))
             self.frametime_sum_tk += time.time() - time_start
-
             if(self.n_frame % self.mean_size == 0):
                 print("Frametime Blur calculation: {time:.3f}ms".format(time = 1000 * self.frametime_sum_tk/self.mean_size))
                 self.frametime_sum_tk = 0
@@ -270,157 +423,6 @@ class MyApp:
             self.label_frame.imgtk = imgtk
             self.label_frame.configure(image=imgtk)
             self.label_frame.after(5, self.showFrame)
-
-    def showBlurOptions(self):
-        if(self.checked.get() == True):
-            self.status.pack(side="top", pady=(5,0))
-            self.blur_value.pack(side="top")
-            self.label_threshold.pack(side="top")
-            self.scale.pack(side="top", pady=(0, 5), fill="x", padx=5)
-        else:
-            self.status.pack_forget()
-            self.scale.pack_forget()
-            self.blur_value.pack_forget()
-            self.label_threshold.pack_forget()
-
-    def testLatestConvolution(self):
-        print("Testing convolutions with the last image")
-        self.test_convolution
-        gray, omega = self.test_convolution
-        self.testConvolutions(self.getConvolutions(), gray, omega, 1)
-
-    def detectBlur(self, im, cut_freq=60, thresh=None):
-        thresh = thresh or self.blur_thresh.get()
-        fft = np.fft.fft2(im)
-        (h, w) = fft.shape
-        fft[0:cut_freq,0:cut_freq]     = 0
-        fft[h-cut_freq:h,0:cut_freq]   = 0
-        fft[0:cut_freq,w-cut_freq:w]   = 0
-        fft[h-cut_freq:h,w-cut_freq:w] = 0
-        recon = np.fft.ifft2(fft)
-        magnitude = 20 * np.log(np.abs(recon))
-        mean = np.mean(magnitude)
-        return (mean, thresh)
-
-    def detectBlur_convolve(self, im):
-        thresh = self.blur_thresh.get()
-        mean = self.convolve(im, self.kernel['laplacian'], 5).var()/10 - 10
-        return (mean, thresh)
-
-    def setBlurred(self, tuple): #(value, maxValue)
-        # print(tuple)
-        is_blurred = tuple[0] <= tuple[1]
-        value = '%.2f'%tuple[0]
-        max_value = '%.2f'%tuple[1]
-        if(is_blurred):
-            self.status.config(text="Blurred")
-            self.blur_value.config(text="Value: {} of {}".format(value, max_value))
-        else:
-            self.status.config(text="Not blurred")
-            self.blur_value.config(text="Value: {} of {}".format(value, max_value))
-
-
-    def onSelection(self, event):
-        self.option.set(self.listbox.get(self.listbox.curselection()))
-
-    # Dynamic Image resizing
-    def imgSizeAdjust(self, img):
-        stable_width = self.frame1.winfo_width() - self.frame2.winfo_width()
-        ratio = stable_width/img.width
-        stable_height = int(ratio*img.height)
-        if (stable_width > 1):
-            return img.resize((stable_width, stable_height), Image.NEAREST)
-        else:
-            return img.resize((img.width, img.height), Image.NEAREST)
-
-    # The convolve method uses the fastest convolution implemented
-    def convolve(self, im, omega, index):
-        default_index = 1
-        convolutions = self.getConvolutions()
-        index = index or default_index
-        if(index > len(convolutions)-1):
-            print("Convolução com o index {} não encontrado, carregando default".format(index))
-            index = default_index
-        result = convolutions[index](im,omega)
-
-        return result
-
-    # The testConvolutions calculates the time used for each convolution method
-    def testConvolutions(self, convolutions, im, omega, inverse_chance=1):  #1 of inverse_chance of executing the test
-        if(random.randint(1,inverse_chance) == 1):
-            for i,convolution in enumerate(convolutions):
-                #timeStart = time.time()
-                #c = convolution(im,omega)
-                #timeEnd = time.time()
-                number_of_executions = 100
-                duration = timeit.timeit(lambda: convolution(im,omega), number=number_of_executions)
-                print("Tempo de execução da convolução {index}: {duration:.3f}ms".format(index = i ,duration = duration*1000/number_of_executions))
-                #print(c)
-
-    # Convolutions implementations
-
-    def convolve_fft(self, im, omega):
-        im = np.pad(im, ((0,1), (0,1))) # zero pad in the last row and column
-        spi = np.fft.fft2(im)
-        spf = np.fft.fft2(omega, s=im.shape)
-        g = spi*spf
-        f = np.fft.ifft2(g)
-        return np.real(f)[1:,1:] # erase the last row and column
-
-    def convolve_pure(self, im, omega):
-        M, N = im.shape
-        A, B = omega.shape
-        a, b = A//2, B//2 # kernel with odd dimensions
-        f = np.array(im, dtype=float)
-        g = np.zeros_like(f, dtype=float)
-        for x in range(M):
-            for y in range(N):
-                aux = 0.0
-                for dx in range(-a, a+1):
-                    for dy in range(-b, b+1):
-                        # or you could use "zero pad" on image
-                        if 0 <= x+dx < M and 0 <= y+dy < N:
-                            aux += omega[a-dx, b-dy]*f[x+dx, y+dy]
-                g[x, y] = aux
-        return g
-
-    def convolve_scipy(self, im, omega):
-        return signal.convolve(im, omega, mode = 'full')
-
-    def convolve_scipy_fft(self, im, omega):
-        return signal.fftconvolve(im, omega, mode = 'full')
-
-    def convolve_scipy_2d(self, im, omega):
-        return signal.convolve2d(im, omega)
-
-    def convolve_uint_scipy(self, im, omega):
-        conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int16)
-        np.clip(conv,0,255,out=conv)
-        return np.uint8(conv)
-
-    def convolve_uint_scipy_view16(self, im, omega):    #Fastest convolution yet
-        conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int16)
-        np.clip(conv,0,255,out=conv)
-        return conv.view('uint8')[:,::2]
-
-    def convolve_uint_scipy_view32(self, im, omega):
-        conv = ndimage.convolve(im, omega, mode = 'constant', cval = 0, origin=0, output=np.int32)
-        np.clip(conv,0,255,out=conv)
-        return conv.view('uint8')[:,::4]
-
-    # Array of convolutions implemented
-    def getConvolutions(self):
-        convolutions = [
-            #convolve_pure,
-            self.convolve_fft,
-            self.convolve_scipy,
-            self.convolve_scipy_fft,
-            self.convolve_scipy_2d,
-            self.convolve_uint_scipy,
-            self.convolve_uint_scipy_view16,
-            self.convolve_uint_scipy_view32
-        ]
-        return convolutions
 
 #Set up GUI
 window = tk.Tk()
