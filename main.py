@@ -19,12 +19,15 @@ if importlib.util.find_spec("tkinter") is None:
 
 class MyApp:
     def __init__(self, root):
+        self.root = root
+
         # Getting screen resolution
         self.screen_width = root.winfo_screenwidth()
         self.screen_height = root.winfo_screenheight()
+        self.root.minsize(width=int(self.screen_width*.8), height=int(self.screen_height*.8))
 
         # Configuring fonts
-        font_size = 14 if self.screen_width <= 1366 else 16
+        font_size = 13 if self.screen_width <= 1366 else 15
         default_font = tkFont.nametofont("TkDefaultFont")
         default_font.configure(size=font_size)
 
@@ -130,6 +133,8 @@ class MyApp:
         self.frame2.pack(fill="x", expand=False, side="left", anchor="n")
         self.frame3 = tk.Frame(self.frame2, background="#282a36")
         self.frame3.pack(fill="x", expand=True, side="top", anchor="n", padx=5)
+        self.frame4 = tk.Frame(self.frame1, background="#282a36")
+        self.frame4.pack(fill="both", expand=True, side="right", anchor="n")
 
         #--------------Widgets--------------#
         #Status of blur detection
@@ -230,8 +235,8 @@ class MyApp:
         self.button_test_convolution.pack(side="right", padx=(5,0))
 
         # Label of captured frames
-        self.label_frame = tk.Label(self.frame1, borderwidth=0)
-        self.label_frame.pack(fill="both", expand="yes", side="right", anchor="n")
+        self.label_frame = tk.Label(self.frame4, borderwidth=0, background="#282a36")
+        self.label_frame.pack()
 
     def showFrame(self):
         ret, frame = self.cap.read()
@@ -321,8 +326,12 @@ class MyApp:
     # Dynamic Image resizing
     def imgSizeAdjust(self, img):
         stable_width = self.frame1.winfo_width() - self.frame2.winfo_width()
-        im_width = stable_width if stable_width > 1 else img.width
-        return img.resize((im_width, self.frame1.winfo_height()), Image.NEAREST)
+        ratio = stable_width/img.width
+        stable_height = int(ratio*img.height)
+        if (stable_width > 1):
+            return img.resize((stable_width, stable_height), Image.NEAREST)
+        else:
+            return img.resize((img.width, img.height), Image.NEAREST)
 
     # The convolve method uses the fastest convolution implemented
     def convolve(self, im, omega, index):
