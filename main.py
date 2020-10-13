@@ -35,7 +35,7 @@ default_font.configure(size=fontSize)
 frame1 = tk.Frame(window, background="#282a36")
 frame1.pack(fill="both", expand=True, side="top")
 frame2 = tk.Frame(frame1, background="#282a36")
-frame2.pack(fill="x", expand=True, side="left", anchor="n")
+frame2.pack(fill="x", expand=False, side="left", anchor="n")
 frame3 = tk.Frame(frame2, background="#282a36")
 frame3.pack(fill="x", expand=True, side="top", anchor="n", padx=5)
 
@@ -154,7 +154,7 @@ testConvolutionButton.pack(side="right", padx=(5,0))
 
 #Capture video frames
 lmain = tk.Label(frame1, borderwidth=0)
-lmain.pack(side="right", anchor="n")
+lmain.pack(fill=tk.BOTH, expand=tk.YES, side="right", anchor="n")
 
 cap = cv2.VideoCapture(0)
 
@@ -167,35 +167,33 @@ def show_frame():
     meanSize = 100
     ret, frame = cap.read()
     if ret == True:
-      # Converting in shades of gray
-      gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-      # Detecting blur
-      if(checked.get() == True): setBlurred(detectBlur(gray))
-      #Setting Test Convolutions tuple and getting kernel
-      omega = kernel[option.get()]
-      test_convolution_vars = (gray,omega)
-      # Blurring the image
-      conv = convolve(gray, omega, 5)
+        # Converting in shades of gray
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Detecting blur
+        timeStart = time.time()
+        if(checked.get() == True): setBlurred(detectBlur(gray))
+        frametimeSum_tk += time.time() - timeStart
+        if(nFrame % meanSize == 0):
+            print("Frametime Blur calculation: {time:.3f}ms".format(time = 1000 * frametimeSum_tk/meanSize))
+            frametimeSum_tk = 0
+        nFrame += 1
+        #Setting Test Convolutions tuple and getting kernel
+        omega = kernel[option.get()]
+        test_convolution_vars = (gray,omega)
+        # Blurring the image
+        conv = convolve(gray, omega, 5)
 
-      if(nFrame % meanSize == 0):
-          newTime = time.time()
-          print("Frametime: {time:.3f}ms".format(time = 1000*(newTime - frametimeLast)/meanSize))
-          frametimeLast = newTime
-     
-      timeStart = time.time()
+        if(nFrame % meanSize == 0):
+            newTime = time.time()
+            print("Frametime: {time:.3f}ms".format(time = 1000*(newTime - frametimeLast)/meanSize))
+            frametimeLast = newTime
 
-      img = Image.fromarray(conv)      
-      imgtk = ImageTk.PhotoImage(image=imgSizeAdjust(img)) 
-      lmain.imgtk = imgtk
-      lmain.configure(image=imgtk)
-      frametimeSum_tk += time.time() - timeStart
-
-      if(nFrame % meanSize == 0):
-          print("Frametime tk config: {time:.3f}ms".format(time = 1000 * frametimeSum_tk/meanSize))
-          frametimeSum_tk = 0
-
-      nFrame += 1
-      lmain.after(10, show_frame) 
+        img = Image.fromarray(conv) 
+        img = imgSizeAdjust(img)
+        imgtk = ImageTk.PhotoImage(image=img)
+        lmain.imgtk = imgtk
+        lmain.configure(image=imgtk)
+        lmain.after(5, show_frame) 
 
 
 def detectBlur(im,cutFreq=60,thresh=None):
@@ -209,6 +207,11 @@ def detectBlur(im,cutFreq=60,thresh=None):
     recon = np.fft.ifft2(fft)
     magnitude = 20 * np.log(np.abs(recon))
     mean = np.mean(magnitude)
+    return (mean, thresh)
+
+def detectBlur_convolve(im):
+    thresh = blurThresh.get()
+    mean = convolve(im, kernel['laplacian'], 5).var()/10 - 10
     return (mean, thresh)
 
 def setBlurred(tuple): #(value, maxValue)
@@ -260,10 +263,11 @@ def on_selection(event):
  
 listbox.bind('<<ListboxSelect>>', on_selection)
 
-# Image resize for bigger resolutions
+# Dynamic Image resizing
 def imgSizeAdjust(img):
-    param = 1.3 if screen_width <= 1366 else 1.6
-    return img.resize((int(img.width * param), int(img.height * param)))
+    stable_width = frame1.winfo_width() - frame2.winfo_width()
+    im_width = stable_width if stable_width > 1 else img.width
+    return img.resize((im_width, frame1.winfo_height()), Image.NEAREST)
 
 #Área de Convoluções e Testes
 
