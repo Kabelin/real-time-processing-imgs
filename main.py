@@ -304,7 +304,7 @@ class MyApp:
     # Array of convolutions implemented
     def getConvolutions(self):
         convolutions = [
-            #convolve_pure,
+            #self.convolve_pure,
             self.convolve_fft,
             self.convolve_scipy,
             self.convolve_scipy_fft,
@@ -335,12 +335,11 @@ class MyApp:
     def testConvolutions(self, convolutions, im, omega, inverse_chance=1):  #1 of inverse_chance of executing the test
         if(random.randint(1,inverse_chance) == 1):
             for i,convolution in enumerate(convolutions):
-                number_of_executions = 100
+                number_of_executions = 50
                 duration = timeit.timeit(lambda: convolution(im,omega), number=number_of_executions)
                 print("Tempo de execução da convolução {index}: {duration:.3f}ms".format(index = i ,duration = duration*1000/number_of_executions))
 
     # Convolutions implementations
-
     def convolve_pure(self, im, omega):
         M, N = im.shape
         A, B = omega.shape
@@ -392,31 +391,35 @@ class MyApp:
         np.clip(conv,0,255,out=conv)
         return conv.view('uint8')[:,::4]
     
+    #For each webcam frame read, apply filter and show image
     def showFrame(self):
         ret, frame = self.cap.read()
         if ret == True:
             # Converting in shades of gray
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Detecting blur
+            
+            # Detecting blur when checkbox is marked and measuring average calculation time
             time_start = time.time()
             if(self.checked.get() == True): self.setBlurred(self.detectBlur(gray))
             self.frametime_sum_tk += time.time() - time_start
             if(self.n_frame % self.mean_size == 0):
                 print("Frametime Blur calculation: {time:.3f}ms".format(time = 1000 * self.frametime_sum_tk/self.mean_size))
                 self.frametime_sum_tk = 0
-
             self.n_frame += 1
-            #Setting Test Convolutions tuple and getting kernel
+            
+            #Getting kernel and setting Test Convolution tuple 
             omega = self.kernel[self.option.get()]
             self.test_convolution = (gray,omega)
-            # Blurring the image
+            # Applying filter with the fastest convolution: convolve_uint_scipy_view16 (index 5)
             conv = self.convolve(gray, omega, 5)
 
+            #Frametime measuring
             if(self.n_frame % self.mean_size == 0):
                 new_time = time.time()
                 print("Frametime: {time:.3f}ms".format(time = 1000*(new_time - self.last_frametime)/self.mean_size))
                 self.last_frametime = new_time
 
+            #Converting the numpy array result to the image in the application frontend
             img = Image.fromarray(conv)
             img = self.imgSizeAdjust(img)
             imgtk = ImageTk.PhotoImage(image=img)
