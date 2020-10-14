@@ -5,7 +5,7 @@
 
 #Vinícius Pereira Duarte - 11721ECP003
 #Vitor Rabelo Cruvinel - 11721ECP004
-#Renato Junio Martins - 11721ECP003
+#Renato Junio Martins - 11721ECP005
 
 import time
 import random
